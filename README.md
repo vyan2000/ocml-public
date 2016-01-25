@@ -1,3 +1,3 @@
 # ocml-public
-ocean color modeling: 
-1. it contains the python script for opening NetCDF files.
+# Ocean Color Modeling: 
+# 1. it contains the python script for opening NetCDF files.
