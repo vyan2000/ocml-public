@@ -1,15 +1,23 @@
+#import sys
+#print(sys.version)
+
 import pandas as pd
 import xarray as xr
 import numpy as np
 
 from matplotlib import pyplot as plt
 
+#import os
+#print("current working directory is", os.getcwd())
+
 
 ##########################
 ##########################
 ##########################
 
-def sel_points_multilinear_dist_lat_lon(dframe, dims='points', col_name = 'str'):
+def sel_points_multilinear_dist_lat_lon(dframe_in, dims='points', col_name = 'str'):
+    # sel_points_multilinear_lat_lon(distance_to_coast, dframe, dims = 'points', col_name ='dist')
+    # col_name should match the satellite dataset
     '''
     # this is a file for interpolating the distance to land
     * given (lat, lon) pair, we can identify its closest distance to land
@@ -53,14 +61,19 @@ def sel_points_multilinear_dist_lat_lon(dframe, dims='points', col_name = 'str')
     print('dist_db.shape is %s, dist_db_arabian.shape is %s' % (dist_db.shape, dist_db_arabian.shape) )
    
     # visualize the unsigned(in-land & out-land) distance around global region
-    fig, ax  = plt.subplots(figsize=(12,8))
+    fig, axis = plt.subplots(figsize=(12,8))
     dist_db_arabian.plot(kind='scatter', x='lon', y='lat', c='dist', cmap='RdBu_r', 
-                         edgecolor='none', ax=ax, title='distance to the nearest coast')
+                         edgecolor='none', ax=axis, title='distance to the nearest coast',
+                         fontsize=12)
+    #plt.savefig('distance_to_coast_main.png')  # for plot, to be removed!!
     plt.show()
+    plt.close()
 
     # transfer the dataframe into dataset, and to prepare for interpolation
     # set time & id as the index); use reset_index to revert
     dist_DS = xr.Dataset.from_dataframe(dist_db_arabian.set_index(['lon','lat']) )
+    # lat -- asceding
+    # lon -- ascending
 
     print("\n ******** Interpolation of distance using (lat, lon) ******* \n")
     ###
@@ -83,14 +96,17 @@ def sel_points_multilinear_dist_lat_lon(dframe, dims='points', col_name = 'str')
     dset_lonmin = dist_DS.lon.to_series().min()
     dset_lonmax = dist_DS.lon.to_series().max()
 
-    mask = (dframe.lat > dset_latmin) & (dframe.lat < dset_latmax) # [True, True, True]
-    mask = mask & (dframe.lon > dset_lonmin) & (dframe.lon < dset_lonmax)
+    mask = (dframe_in.lat > dset_latmin) & (dframe_in.lat < dset_latmax) # [True, True, True]
+    mask = mask & (dframe_in.lon > dset_lonmin) & (dframe_in.lon < dset_lonmax)
 
-    dframe = dframe[mask]
+    dframe = dframe_in.loc[mask,:]
 
     ################### printings
+    ### 'lat is ascending
     #print(dist_DS.indexes['lat'])
     #print(type(dist_DS.indexes['lat']))
+
+    ### 'lon is ascending
     #print(dist_DS.indexes['lon'])
     #print(type(dist_DS.indexes['lon']))
 
@@ -229,22 +245,28 @@ def sel_points_multilinear_dist_lat_lon(dframe, dims='points', col_name = 'str')
     # val = np.array([277.093,280.401, 280.076, 283.349])
     # np.dot(val, weights) # 278.6635625
 
-
+    ###--------- approach depreciated ------------###
+    ###--------- use df to generalize ------------###
     ## output xarray.dataarray of points, see examples below
     # this is the way how xarray.Dataset works
     # if you want a xarray.DataArray, first generate a xarray.Dataset, then select DataArray from there.
-    dframe_out = xr.Dataset({col_name: (['points'], dist_new)},
-                            coords={
-                                # 'time':(['points'],['2002-07-13 00:00:00', '2002-07-22 00:00:00', '2002-07-13 00:00:00']) ,
-                                'time': (['points'], dframe.time),
-                                'id': (['points'], dframe.id),
-                                'lon': (['points'], dframe.lon),
-                                'lat': (['points'], dframe.lat),
-                                'points': (['points'], range(0, len(dframe)))})  # dims is set to point
+    #dframe_out = xr.Dataset({col_name: (['points'], dist_new)},
+    #                        coords={
+    #                            # 'time':(['points'],['2002-07-13 00:00:00', '2002-07-22 00:00:00', '2002-07-13 00:00:00']) ,
+    #                            'time': (['points'], dframe.time),
+    #                            'id': (['points'], dframe.id),
+    #                            'lon': (['points'], dframe.lon),
+    #                            'lat': (['points'], dframe.lat),
+    #                            'points': (['points'], range(0, len(dframe)))})  # dims is set to point
+    ###-------------------------------------------### 
+    #http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+    dframe.loc[:, col_name] = pd.Series(dist_new, index = dframe.index)
+    #print('\n', dframe[col_name])
+    return dframe
 
-    print('\n', dframe_out[col_name])
 
-    return dframe_out
+
+
 
 
 
@@ -273,7 +295,7 @@ result_out2 = sel_points_multilinear_dist_lat_lon(row_case2, dims='points', col_
 
 
 
-def sel_points_multilinear_time_lat_lon(dset, dframe, dims='points', col_name = 'str'): 
+def sel_points_multilinear_time_lat_lon(dset, dframe_in, dims='points', col_name = 'str'): 
     # col_name should match the satellite dataset
     '''    
     sel_points_multilinear_time_lat_lon(ds_9day, row_case1, dims = 'points', col_name ='chlor_a')
@@ -281,11 +303,11 @@ def sel_points_multilinear_time_lat_lon(dset, dframe, dims='points', col_name = 
     function for generating multilinear interpolations in python
     
     input:  dset      xarray.dataset; the dictionary of values 
-            dframe    pandas.dataframe; the lists {time, lat, lon, id}
+            dframe_in    pandas.dataframe; the lists {time, lat, lon, id}
             dims      default to be "Points" of xarray.dataset
             col_name  the variable to interpolate;
        
-    output: dframe_out       
+    output: dframe 
     '''
 
 
@@ -346,10 +368,11 @@ def sel_points_multilinear_time_lat_lon(dset, dframe, dims='points', col_name = 
     dset_lonmin = dset.lon.to_series().min()
     dset_lonmax = dset.lon.to_series().max()
 
-    mask = (dframe.lat > dset_latmin) & (dframe.lat < dset_latmax)
-    mask = mask & (dframe.lon > dset_lonmin) & (dframe.lon < dset_lonmax)
+    mask = (dframe_in.lat > dset_latmin) & (dframe_in.lat < dset_latmax)
+    mask = mask & (dframe_in.lon > dset_lonmin) & (dframe_in.lon < dset_lonmax)
 
-    dframe = dframe[mask]
+    dframe= dframe_in.loc[mask,:]
+    
     '''
     ################### printings
     ### 'time is from small to big number'
@@ -536,6 +559,7 @@ def sel_points_multilinear_time_lat_lon(dset, dframe, dims='points', col_name = 
     #print("weights.shape", weights.shape) # (8, 3)
     #print("tmp.shape", tmp.shape)  # (8, 3)
 
+    
     nrow_w, ncol_w = weights.shape
     nrow_t, ncol_t = tmp.shape
     assert nrow_w == nrow_t, "the row count of weights and values are not the same!"
@@ -543,9 +567,9 @@ def sel_points_multilinear_time_lat_lon(dset, dframe, dims='points', col_name = 
     #print('\n tensor product\n', np.dot(weights[:,0], tmp[:,0]) ) # 0.216701896135 should be [ 0.2167019]
 
     # new interpolation process of the Chl_a
-    chl_new = np.empty(ncol_w)
+    var_new = np.empty(ncol_w)
     for i in range(0, ncol_w, 1):
-        chl_new[i] =  np.dot(weights[:,i], tmp[:,i])
+        var_new[i] =  np.dot(weights[:,i], tmp[:,i])
 
     #print('chl_newInt',  chl_new) #  [ 0.2167019  0.181841   0.2167019]
     # validate by 1D array
@@ -555,20 +579,26 @@ def sel_points_multilinear_time_lat_lon(dset, dframe, dims='points', col_name = 
     # np.dot(val, weights) # 0.21670189702309739
 
 
+    ###--------- approach depreciated ------------###
+    ###--------- use df to generalize ------------###
+    
     ## output xarray.dataarray of points, see examples below
     # this is the way how xarray.Dataset works
     # if you want a xarray.DataArray, first generate a xarray.Dataset, then select DataArray from there.
-    dframe_out = xr.Dataset({col_name: (['points'],chl_new)},
-                            coords={
-    #'time':(['points'],['2002-07-13 00:00:00', '2002-07-22 00:00:00', '2002-07-13 00:00:00']) ,
-                                    'time':(['points'], dframe.time) ,
-                                    'id': (['points'], dframe.id), 
-                                    'lon': (['points'], dframe.lon),
-                                    'lat':(['points'], dframe.lat), 
-                                    'points': (['points'], range(0,len(dframe))) } ) # dims is set to point
+    #dframe_out = xr.Dataset({col_name: (['points'],var_new)},
+    #                        coords={
+    ##'time':(['points'],['2002-07-13 00:00:00', '2002-07-22 00:00:00', '2002-07-13 00:00:00']) ,
+    #                                'time':(['points'], dframe.time) ,
+    #                                'id': (['points'], dframe.id), 
+    #                                'lon': (['points'], dframe.lon),
+    #                                'lat':(['points'], dframe.lat), 
+    #                                'points': (['points'], range(0,len(dframe))) } ) #dims isset to point
+    ###-------------------------------------------### 
+    #http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+    dframe.loc[:, col_name] = pd.Series(var_new, index = dframe.index)
+    #print('\n', dframe[col_name])
+    return dframe
 
-    #print('\n', dframe_out[col_name])
-    return dframe_out
     
 #newtmpAll = sel_points_multilinear(ds_9day, dims = 'points', out ='chlor_a', 
 #              time = list(['2002-07-13 00:00:00']), lat = list([5]),  lon = list([70]) )
