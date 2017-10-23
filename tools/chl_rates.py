@@ -276,9 +276,11 @@ def spatial_hist_plots_chl_rate(dfRate):
         # select only particular month, Nov 1 to March 31
         #fig, ax  = plt.subplots(figsize=(12,10))
         print(tmpyear.chl_rate.dropna().shape)  #  (1826,)>>> total (1001,)
-        tmpyear.plot(kind='scatter', x='lon', y='lat', c='chl_rate', cmap='RdBu_r',
-                     vmin=-0.6, vmax=0.6, edgecolor='none', ax=ax)
-        ax.set_title('year %g' % i) 
+        if not tmpyear.empty:
+            tmpyear.plot(kind='scatter', x='lon', y='lat', c='chl_rate', cmap='RdBu_r',
+                         vmin=-0.6, vmax=0.6, edgecolor='none', ax=ax)
+            ax.set_title('year %g' % i)
+            
     plt.show()
     
     return 0
