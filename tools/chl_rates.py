@@ -90,6 +90,80 @@ def add_chl_rates(floatsDF, result_interpDF):
     return combined_dfRate_interpolate
 
 
+def add_chl_rates_globcolour(floatDF_tmp, freq):
+    """
+    function for adding the rate of change of chlor_a and log-scale chlor_a 
+    to the dataframe. It is done by taking temporal difference using xarray
+    dataset; Nondimensionalization for the daily and weekly temporal scales;
+    Standardization for the daily scale.
+    ----------
+    input: 
+    floatDF_tmp -- pandas.dataframe of floats data
+    freq        -- current resampling frequency
+
+    output: 
+    floatDF_tmp -- updated dataframe
+                   columns added {chlor_a_log_e, chl_rate, chl_log_e_rate, chl_rate_week,
+                   chl_log_e_rate_week, chl_rate_stand, chl_log_e_rate_stand}
+    """
+    def scale(x):
+        logged = np.log(x)
+        return logged
+    
+    # chlor_a on the log-scale
+    floatDF_tmp['chlor_a_log_e'] = floatDF_tmp['chlor_a'].apply(scale)
+    
+    print("\n ******* Take the Diff of chlor_a ******* \n" )
+    # prepare the data in dataset and about to take the diff
+    # set time & id as the index); use reset_index to revert this operation
+    tmp_interpolate = xr.Dataset.from_dataframe(floatDF_tmp.set_index(['time','id']) ) 
+    # take the diff on the chlor_a and the log-scale chlor_a
+    chlor_a_rate = tmp_interpolate.diff(dim='time',n=1).chlor_a.to_series().reset_index()
+    chlor_a_log_e_rate = tmp_interpolate.diff(dim='time',n=1).chlor_a_log_e.to_series().reset_index()
+    
+    print("\n *** the resampling freqency used for nondimensionalization is %dD *** \n" % freq)
+    
+    # nondimensionalization -- # per day
+    chlor_a_rate['chlor_a'] = chlor_a_rate['chlor_a'].div(freq)
+    chlor_a_log_e_rate['chlor_a_log_e'] = chlor_a_log_e_rate['chlor_a_log_e'].div(freq)
+    
+    # rename the columns
+    chlor_a_rate.rename(columns={'chlor_a':'chl_rate'}, inplace='True')
+    chlor_a_log_e_rate.rename(columns={'chlor_a_log_e':'chl_log_e_rate'}, inplace='Trace')
+    
+    # left-merge the two dataframes {floatsDFAll_XDtimeorder; chlor_a_rate} into
+    #  one dataframe based on the index {id, time}
+    floatDF_tmp=pd.merge(floatDF_tmp, chlor_a_rate, 
+                        on=['time','id'], how = 'left')
+    floatDF_tmp=pd.merge(floatDF_tmp, chlor_a_log_e_rate, 
+                         on=['time','id'], how = 'left')
+    
+    #  nondimensionalization -- # per week
+    floatDF_tmp['chl_rate_week'] = floatDF_tmp['chl_rate'].mul(7.)
+    floatDF_tmp['chl_log_e_rate_week'] = floatDF_tmp['chl_log_e_rate'].mul(7.)
+    
+    # add standardized rate of change
+    floatDF_tmp['chl_rate_stand'] = (floatDF_tmp['chl_rate'] - floatDF_tmp['chl_rate'].mean()) / floatDF_tmp['chl_rate'].std()
+    floatDF_tmp['chl_log_e_rate_stand'] = (floatDF_tmp['chl_log_e_rate'] - floatDF_tmp['chl_log_e_rate'].mean()) / floatDF_tmp['chl_log_e_rate'].std()
+    
+    # check 
+    print('check the sum of the chlor_a_rate before the merge', chlor_a_rate.chl_rate.sum())
+    print('check the sum of the chlor_a_rate after the merge', floatDF_tmp.chl_rate.sum())
+    
+    # check
+    print('check the sum of the chlor_a_log_e_rate before the merge', chlor_a_log_e_rate.chl_log_e_rate.sum())
+    print('check the sum of the chlor_a_log_e_rate after the merge', floatDF_tmp.chl_log_e_rate.sum())
+
+    # summaries
+    print("\n ******* \n summary of the rate of change of chlor_a \n", 
+          floatDF_tmp.chl_rate.describe())
+
+    # summaries
+    print("\n ******* \n summary of the rate of change of log-scale chlor-a \n",
+          floatDF_tmp.chl_log_e_rate.describe())
+    
+    print(floatDF_tmp)
+    return floatDF_tmp
 
 def spatial_hist_plots_chl_rate(dfRate):
     """
@@ -121,7 +195,7 @@ def spatial_hist_plots_chl_rate(dfRate):
           dfRate.chl_rate.dropna().shape)   # (1838,) >>> (1008,) data points
     print('Interpolation: valid data points for rate of change of log-scale chlor_a',
           dfRate.chl_log_e_rate.dropna().shape)   # (1838,) >>> (1008,) data points
-    fig.suptitle("Natural log-scale chl-a", fontsize=12)
+    fig.suptitle("natural log-scale chl-a", fontsize=12)
 
     plt.show()
 
@@ -129,14 +203,15 @@ def spatial_hist_plots_chl_rate(dfRate):
     fig, ax  = plt.subplots(figsize=(12,10))
     dfRate.plot(kind='scatter', x='lon', y='lat', c='chl_rate', cmap='RdBu_r',
                 vmin=-1, vmax=1, edgecolor='none', ax=ax)
-    fig.suptitle("Rate of change of chl-a", fontsize=12)
+    ax.set_title("rate of change of chl-a", fontsize=12)
+    #fig.savefig('spatial_rate_of_change_chl_a.png')  # for plot, to be removed!!
     plt.show()
 
     # visualize the chlorophyll rate, it is *better* to visualize at this scale
     fig, ax  = plt.subplots(figsize=(12,10))
     dfRate.plot(kind='scatter', x='lon', y='lat', c='chl_log_e_rate', cmap='RdBu_r',
                 vmin=-1, vmax=1, edgecolor='none', ax=ax)
-    fig.suptitle("Rate of change of log-scale chlor-a", fontsize=12)
+    ax.set_title("rate of change of log-scale chlor-a", fontsize=12)
     plt.show()
 
 
@@ -371,68 +446,95 @@ def spatial_plots_chl_rate_weekly(dfRate):
     print("\n ****** weekly plot of chl_log_e_rate_week ****** \n")
     # weekly plot of chl_log_e_rate
     # This is the rate of change on the exponential scale
+    
+    fig = plt.figure(figsize=(12,8))
+    ax = fig.add_subplot(111)    # The big subplot
+    ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+
+    axes1 = fig.add_subplot(211)
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].mean().plot(linestyle="-", color='b',
                                                                                       linewidth=1)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.75).plot(linestyle="--", color='g',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.75).plot(linestyle="--", color='g',
                                                                                      linewidth=0.35)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.50).plot(linestyle="--", color='r',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.50).plot(linestyle="--", color='r',
                                                                                      linewidth=0.75)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.25).plot(linestyle="--", color='g',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.25).plot(linestyle="--", color='g',
                                                                                      linewidth=0.35)
     axes1.set_ylim(-2, 1)
-    axes1.set_title("Line plot of the weekly data on the rate of change per week of the log-scale $Chl_a$ Concentration",
-                    fontsize=10)
-    plt.xlabel('week', fontsize=10)
-    plt.ylabel('rate of change of the log-scale $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=10)
-    plt.yticks(np.arange(-2, 1, 0.25))
-    plt.xticks(np.arange(1, 25, 1))
-    plt.show()
-
+    axes1.set_yticks(np.arange(-2, 1, 0.25))
+    axes1.set_xticks(np.arange(1, 25, 1))
+    #axes1.legend(bbox_to_anchor=(1.10, 1.05))
+    axes1.set_xlabel("")
+    axes1.set_ylabel("")   
+    
+    
 
     # http://pandas.pydata.org/pandas-docs/version/0.19.1/visualization.html
     # http://blog.bharatbhole.com/creating-boxplots-with-matplotlib/
-    axes2 = df_timed_NovMar.boxplot(column='chl_log_e_rate_week', by='week_rotate')
-    plt.suptitle("")  # equivalent
+    axes2 = fig.add_subplot(212)
+    axes2 = df_timed_NovMar.boxplot(column='chl_log_e_rate_week', by='week_rotate', ax=axes2)
     axes2.set_ylim(-2, 1)
-    axes2.set_title("Box plot of the weekly data on the rate of change per week of the log-scale $Chl_a$ Concentration",
-                    fontsize=10)
-    plt.xlabel('week', fontsize=10)
-    plt.ylabel('rate of change of the log-scale $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=10)
+    axes2.set_yticks(np.arange(-2, 1, 0.25))
+    axes2.set_xticks(np.arange(1, 25, 1))
+    axes2.set_xlabel("")
+    axes2.set_ylabel("")   
+
+    ###  on the big axes
+    ax.set_title("weekly data on the rate of change per week of the log-scale $Chl_a$ Concentration", fontsize=12)
+    ax.set_xlabel('week', fontsize=12)
+    ax.set_ylabel('rate of change of the log-scale $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=12)
+    #plt.savefig("box_line_plots_chl_log_scale_rate.png")
     plt.show()
-
-
+    plt.close()
+    
+    
     print("\n ****** weekly plot of chl_rate_week ****** \n")
     # weekly plot on the Lagrangian rate of change of the log-scale chl-a
+    fig = plt.figure(figsize=(12,8))
+    ax = fig.add_subplot(111)    # The big subplot
+    ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+
+    axes1 = fig.add_subplot(211)
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].mean().plot(linestyle="-", color='b',
                                                                                   linewidth=1)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.75).plot(linestyle="--", color='g',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.75).plot(linestyle="--", color='g',
                                                                                  linewidth=0.35)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.50).plot(linestyle="--", color='r',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.50).plot(linestyle="--", color='r',
                                                                                  linewidth=0.75)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.25).plot(linestyle="--", color='g',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.25).plot(linestyle="--", color='g',
                                                                                  linewidth=0.35)
+    
     axes1.set_ylim(-2, 3)
-    axes1.set_title("Line plot of the weekly data on the rate of change per week of the $Chl_a$ Concentration",
-                    fontsize=10)
-    plt.xlabel('week', fontsize=10)
-    plt.ylabel('rate of change of the $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=10)
-    plt.yticks(np.arange(-2, 3, 0.5))
-    plt.xticks(np.arange(1, 25, 1))
-    plt.show()
+    axes1.set_yticks(np.arange(-2, 3, 0.5))
+    axes1.set_xticks(np.arange(1, 25, 1))
+    #axes1.legend(bbox_to_anchor=(1.10, 1.05))
+    axes1.set_xlabel("")
+    axes1.set_ylabel("")   
+    
 
     # http://pandas.pydata.org/pandas-docs/version/0.19.1/visualization.html
     # http://blog.bharatbhole.com/creating-boxplots-with-matplotlib/
-    axes2 = df_timed_NovMar.boxplot(column='chl_rate_week', by='week_rotate')
-    plt.suptitle("")  # equivalent
+    axes2 = fig.add_subplot(212)
+    axes2 = df_timed_NovMar.boxplot(column='chl_rate_week', by='week_rotate', ax= axes2)
     axes2.set_ylim(-2, 3)
-    axes2.set_title("Box plot of the weekly data on the rate of change per week of the $Chl_a$ Concentration",
-                    fontsize=10)
-    plt.xlabel('week', fontsize=10)
-    plt.ylabel('rate of change of the $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=10)
+    axes2.set_yticks(np.arange(-2, 3, 0.5))
+    axes2.set_xticks(np.arange(1, 25, 1))
+    axes2.set_xlabel("")
+    axes2.set_ylabel("")   
+    
+    ###  on the big axes
+    ax.set_title("weekly data on the rate of change per week of the $Chl_a$ Concentration", fontsize=12)
+    ax.set_xlabel('week', fontsize=12)
+    ax.set_ylabel('rate of change of the $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=12)
+    ##################plt.savefig("box_line_plots_chl_rate.png")
     plt.show()
-
-
-
+    plt.close()
+    
+    
+    
+    
+    
+    
 
     print("\n ****** weekly plot of nondimensionalized daily chl_log_e_rate ****** \n")
     # weekly plot of chl_log_e_rate
