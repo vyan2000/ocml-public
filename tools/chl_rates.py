@@ -294,7 +294,6 @@ def reduce_to_NovMar(dfRate):
     :param dfRate:
     :return:
     '''
-
     df_list = []
     for i in range(2002, 2017):
         tmpyear = dfRate[(dfRate.time >= (str(i) + '-11-01')) & (
@@ -304,7 +303,7 @@ def reduce_to_NovMar(dfRate):
 
     dfRate_NovMar = pd.concat(df_list)
     print('all the data count in [11-01, 03-31]  is ', dfRate_NovMar.chl_rate.dropna().shape)  # again, total is (977,)
-
+    
     return dfRate_NovMar
 
 
@@ -456,18 +455,18 @@ def spatial_plots_chl_rate_weekly(dfRate):
     axes1 = fig.add_subplot(211)
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].mean().plot(linestyle="-", color='b',
                                                                                       linewidth=1)
-    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.75).plot(linestyle="--", color='g',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.85).plot(linestyle="--", color='g',
                                                                                      linewidth=0.35)
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.50).plot(linestyle="--", color='r',
                                                                                      linewidth=0.75)
-    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.25).plot(linestyle="--", color='g',
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_week'].quantile(.15).plot(linestyle="--", color='g',
                                                                                      linewidth=0.35)
     axes1.set_ylim(-2, 1)
-    axes1.set_yticks(np.arange(-2, 1, 0.25))
+    axes1.set_yticks(np.arange(-2, 2, 0.25))
     axes1.set_xticks(np.arange(1, 25, 1))
     #axes1.legend(bbox_to_anchor=(1.10, 1.05))
-    axes1.set_xlabel("")
-    axes1.set_ylabel("")   
+    axes1.set_xlabel(" ")
+    axes1.set_ylabel(" ")   
     
     
 
@@ -478,8 +477,8 @@ def spatial_plots_chl_rate_weekly(dfRate):
     axes2.set_ylim(-2, 1)
     axes2.set_yticks(np.arange(-2, 1, 0.25))
     axes2.set_xticks(np.arange(1, 25, 1))
-    axes2.set_xlabel("")
-    axes2.set_ylabel("")   
+    axes2.set_xlabel(" ")
+    axes2.set_ylabel(" ")   
 
     ###  on the big axes
     ax.set_title("weekly data on the rate of change per week of the log-scale $Chl_a$ Concentration", fontsize=12)
@@ -492,50 +491,30 @@ def spatial_plots_chl_rate_weekly(dfRate):
     
     print("\n ****** weekly plot of chl_rate_week ****** \n")
     # weekly plot on the Lagrangian rate of change of the log-scale chl-a
-    fig = plt.figure(figsize=(12,8))
-    ax = fig.add_subplot(111)    # The big subplot
-    ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
-
-    axes1 = fig.add_subplot(211)
-    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].mean().plot(linestyle="-", color='b',
-                                                                                  linewidth=1)
-    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.75).plot(linestyle="--", color='g',
-                                                                                 linewidth=0.35)
-    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.50).plot(linestyle="--", color='r',
-                                                                                 linewidth=0.75)
-    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.25).plot(linestyle="--", color='g',
-                                                                                 linewidth=0.35)
-    
-    axes1.set_ylim(-2, 3)
-    axes1.set_yticks(np.arange(-2, 3, 0.5))
-    axes1.set_xticks(np.arange(1, 25, 1))
-    #axes1.legend(bbox_to_anchor=(1.10, 1.05))
-    axes1.set_xlabel("")
-    axes1.set_ylabel("")   
-    
+    axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].mean().plot(linestyle="-", color='b', linewidth=1)
+    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.85).plot(linestyle="--", color='g', linewidth=0.35)
+    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.50).plot(linestyle="--", color='r', linewidth=0.75)
+    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_week'].quantile(.15).plot(linestyle="--", color='g', linewidth=0.35)
+    axes1.set_ylim(-1, 0.5)
+    axes1.set_title("Line plot of the weekly data on the rate of change per week of the $Chl_a$ Concentration",
+                    fontsize=10)
+    plt.xlabel('week', fontsize=10)
+    plt.ylabel('rate of change of the $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=10)
+    plt.yticks(np.arange(-3, 2, 0.25))
+    plt.xticks(np.arange(1, 25, 1))
+    plt.show()
 
     # http://pandas.pydata.org/pandas-docs/version/0.19.1/visualization.html
     # http://blog.bharatbhole.com/creating-boxplots-with-matplotlib/
-    axes2 = fig.add_subplot(212)
-    axes2 = df_timed_NovMar.boxplot(column='chl_rate_week', by='week_rotate', ax= axes2)
-    axes2.set_ylim(-2, 3)
-    axes2.set_yticks(np.arange(-2, 3, 0.5))
-    axes2.set_xticks(np.arange(1, 25, 1))
-    axes2.set_xlabel("")
-    axes2.set_ylabel("")   
-    
-    ###  on the big axes
-    ax.set_title("weekly data on the rate of change per week of the $Chl_a$ Concentration", fontsize=12)
-    ax.set_xlabel('week', fontsize=12)
-    ax.set_ylabel('rate of change of the $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=12)
-    ##################plt.savefig("box_line_plots_chl_rate.png")
+    axes2 = df_timed_NovMar.boxplot(column='chl_rate_week', by='week_rotate')
+    plt.suptitle("")  # equivalent
+    axes2.set_ylim(-1.5, 1)
+    axes2.set_title("Box plot of the weekly data on the rate of change per week of the $Chl_a$ Concentration",
+                    fontsize=10)
+    plt.xlabel('week', fontsize=10)
+    plt.ylabel('rate of change of the $Chl_a$ in $mg/(m^3 \cdot 7days)$', fontsize=10)
     plt.show()
-    plt.close()
-    
-    
-    
-    
-    
+
     
 
     print("\n ****** weekly plot of nondimensionalized daily chl_log_e_rate ****** \n")
@@ -543,11 +522,11 @@ def spatial_plots_chl_rate_weekly(dfRate):
     # This is the rate of change on the exponential scale
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate'].mean().plot(linestyle="-", color='b',
                                                                                       linewidth=1)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate'].quantile(.75).plot(linestyle="--", color='g',
+    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate'].quantile(.85).plot(linestyle="--", color='g',
                                                                                      linewidth=0.35)
     df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate'].quantile(.50).plot(linestyle="--", color='r',
                                                                                      linewidth=0.75)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate'].quantile(.25).plot(linestyle="--", color='g',
+    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate'].quantile(.15).plot(linestyle="--", color='g',
                                                                                      linewidth=0.35)
     axes1.set_ylim(-1, 0.5)
     axes1.set_title("Line plot of the weekly data on the rate of change per day of the log-scale $Chl_a$ Concentration",
@@ -573,9 +552,9 @@ def spatial_plots_chl_rate_weekly(dfRate):
     print("\n ****** weekly plot of nondimensionalized daily chl_rate ****** \n")
     # weekly plot on the Lagrangian rate of change of the log-scale chl-a
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate'].mean().plot(linestyle="-", color='b', linewidth=1)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_rate'].quantile(.75).plot(linestyle="--", color='g', linewidth=0.35)
+    df_timed_NovMar.groupby(['week_rotate'])['chl_rate'].quantile(.85).plot(linestyle="--", color='g', linewidth=0.35)
     df_timed_NovMar.groupby(['week_rotate'])['chl_rate'].quantile(.50).plot(linestyle="--", color='r', linewidth=0.75)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_rate'].quantile(.25).plot(linestyle="--", color='g', linewidth=0.35)
+    df_timed_NovMar.groupby(['week_rotate'])['chl_rate'].quantile(.15).plot(linestyle="--", color='g', linewidth=0.35)
     axes1.set_ylim(-1, 0.5)
     axes1.set_title("Line plot of the weekly data on the rate of change per day of the $Chl_a$ Concentration",
                     fontsize=10)
@@ -606,11 +585,11 @@ def spatial_plots_chl_rate_weekly(dfRate):
     # This is the rate of change on the exponential scale
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_stand'].mean().plot(linestyle="-", color='b',
                                                                                    linewidth=1)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_stand'].quantile(.75).plot(linestyle="--", color='g',
+    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_stand'].quantile(.85).plot(linestyle="--", color='g',
                                                                                   linewidth=0.35)
     df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_stand'].quantile(.50).plot(linestyle="--", color='r',
                                                                                   linewidth=0.75)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_stand'].quantile(.25).plot(linestyle="--", color='g',
+    df_timed_NovMar.groupby(['week_rotate'])['chl_log_e_rate_stand'].quantile(.15).plot(linestyle="--", color='g',
                                                                                   linewidth=0.35)
     axes1.set_ylim(-2, 1)
     axes1.set_title("Line plot of the weekly data on the standardized rate of change per day of the "
@@ -638,19 +617,19 @@ def spatial_plots_chl_rate_weekly(dfRate):
     # weekly plot on the Lagrangian rate of change of the log-scale chl-a
     axes1 = df_timed_NovMar.groupby(['week_rotate'])['chl_rate_stand'].mean().plot(linestyle="-", color='b',
                                                                                    linewidth=1)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_stand'].quantile(.75).plot(linestyle="--", color='g',
+    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_stand'].quantile(.85).plot(linestyle="--", color='g',
                                                                                   linewidth=0.35)
     df_timed_NovMar.groupby(['week_rotate'])['chl_rate_stand'].quantile(.50).plot(linestyle="--", color='r',
                                                                                   linewidth=0.75)
-    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_stand'].quantile(.25).plot(linestyle="--", color='g',
+    df_timed_NovMar.groupby(['week_rotate'])['chl_rate_stand'].quantile(.15).plot(linestyle="--", color='g',
                                                                                   linewidth=0.35)
-    axes1.set_ylim(-2, 1)
+    axes1.set_ylim(-1, 0.5)
     axes1.set_title("Line plot of the weekly data on the standardized rate of change per day of the"
                     " $Chl_a$ Concentration",
                     fontsize=10)
     plt.xlabel('week', fontsize=10)
     plt.ylabel('rate of change of the $Chl_a$ in $mg/(m^3 \cdot day)$', fontsize=10)
-    plt.yticks(np.arange(-2, 1, 0.5))
+    plt.yticks(np.arange(-0.75, 0.5, 0.25))
     plt.xticks(np.arange(1, 25, 1))
     plt.show()
 
@@ -658,7 +637,7 @@ def spatial_plots_chl_rate_weekly(dfRate):
     # http://blog.bharatbhole.com/creating-boxplots-with-matplotlib/
     axes2 = df_timed_NovMar.boxplot(column='chl_rate_stand', by='week_rotate')
     plt.suptitle("")  # equivalent
-    axes2.set_ylim(-1, 0.5)
+    axes2.set_ylim(-0.75, 0.5)
     axes2.set_title("Box plot of the weekly data on the standardized rate of change per day of the"
                     " $Chl_a$ Concentration",
                     fontsize=10)
@@ -674,7 +653,7 @@ def spatial_plots_chl_rate_weekly(dfRate):
     for i in range(0, 5, 1):
         month_ind = np.array([11, 12, 1, 2, 3])
         month_names = ['November', 'December', 'January', 'February', 'March']
-        aa = df_timed_NovMar_ind[df_timed_NovMar_ind.index.month == month_ind[i]]
+        aa = df_timed_NovMar_ind[df_timed_NovMar_ind.index.to_datetime().month == month_ind[i]]
         fig, ax = plt.subplots(figsize=(8, 6))
         ##aa.plot(kind='scatter', x='lon', y='lat', c='chl_rate', cmap='RdBu_r',
         # vmin=aa.chl_rate.median()-0.5*aa.chl_rate.std(), vmax=aa.chl_rate.median()-0.5*aa.chl_rate.std(),
