@@ -295,7 +295,7 @@ def reduce_to_NovMar(dfRate):
     :return:
     '''
     df_list = []
-    for i in range(2002, 2017):
+    for i in range(2002, 2018):
         tmpyear = dfRate[(dfRate.time >= (str(i) + '-11-01')) & (
                                                dfRate.time <= (str(i + 1) + '-03-31'))]  # if year i
         # select only particular month, Nov 1 to March 31
@@ -478,7 +478,8 @@ def spatial_plots_chl_rate_weekly(dfRate):
     axes2.set_yticks(np.arange(-2, 1, 0.25))
     axes2.set_xticks(np.arange(1, 25, 1))
     axes2.set_xlabel(" ")
-    axes2.set_ylabel(" ")   
+    axes2.set_ylabel(" ")
+    axes2.set_title(" ")
 
     ###  on the big axes
     ax.set_title("weekly data on the rate of change per week of the log-scale $Chl_a$ Concentration", fontsize=12)
@@ -577,9 +578,6 @@ def spatial_plots_chl_rate_weekly(dfRate):
 
 
 
-
-
-
     print("\n ****** weekly plot of standardized nondimensionalized-daily chl_log_e_rate ****** \n")
     # weekly plot of chl_log_e_rate
     # This is the rate of change on the exponential scale
@@ -675,6 +673,12 @@ def spatial_plots_chl_rate_weekly(dfRate):
 
 
     return 0
+
+def output_chl_rates_monthly(dfRate, freq):
+    """
+    output the chl_rates dataframe for each month of 'Nov 1 - March 31'
+    """
+    return 0 
 
 
 def output_chl_rates_dist(infile_df, freq):
