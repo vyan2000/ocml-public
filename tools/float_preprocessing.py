@@ -110,7 +110,7 @@ def floatIdInterpolationOrSplitting(floatsDF_NovMar_ID, freq):
         #print('first valid index:', floatsDF_i.set_index("time").chlor_a.first_valid_index())
         #print('last valid index:',floatsDF_i.set_index("time").chlor_a.last_valid_index())
         # drop everything outside this range
-        head = floatsDF_i.set_index("time").chlor_a.first_valid_index()
+        head =  floatsDF_i.set_index("time").chlor_a.first_valid_index()
         tail =  floatsDF_i.set_index("time").chlor_a.last_valid_index()
         mask = (floatsDF_i.time >= head) & (floatsDF_i.time <= tail)
         floatsDF_i = floatsDF_i[mask]
@@ -131,7 +131,7 @@ def floatIdInterpolationOrSplitting(floatsDF_NovMar_ID, freq):
                                               limit=None, inplace=True)
             ###floatsDF_81828['chlor_a'].interpolate(method='linear', axis=0, limit=None, 
             ###inplace=False).plot()
-            floatsDF_i.plot(x='time', y ='chlor_a', title=('id - %.2f' % i))
+            #floatsDF_i.plot(x='time', y ='chlor_a', title=('id - %.2f' % i))
             #print(floatsDF_i[col_listLDS ])
             ### process all other variables, here we assume other variable are linear...
             # + easy approach: linear interpolation, then fill forward, then fill backward
@@ -148,81 +148,86 @@ def floatIdInterpolationOrSplitting(floatsDF_NovMar_ID, freq):
             print("------ after preprocess completed ------")
             print("------ after preprocess completed ------")
             #print(floatsDF_i[col_listLDS ])
-            mask = (floatsDF_i.time >= head) & (floatsDF_i.time <= tail) 
-            tmp = floatsDF_i[mask]
-            floatsDF_sub_list.append(tmp)
-        
+            
+            # there might still be gaps in the interpolated float at this step
+            # so we treat the interpolated float as a fresh one.
+            #mask = (floatsDF_i.time >= head) & (floatsDF_i.time <= tail) 
+            #tmp = floatsDF_i[mask]
+            #floatsDF_sub_list.append(tmp)
+            
     
     
-        # if nan's ratio is bigger than 0.47, then we split the series as continuous sub-series
-        # while loop
-        if ratio > 0.47:
-            # loop through the time
-            # https://stackoverflow.com/questions/16782682/timedelta-is-not-defined
+        ## - if nan's ratio is bigger than 0.47,
+        ## - or the float is already been interpolated during the case where nan's ratio < 0.47
+        ## - then we split the series as continuous sub-series
+        ## while loop
+        ## if ratio > 0.47:
+        ## loop through the time
+        ## https://stackoverflow.com/questions/16782682/timedelta-is-not-defined
     
-            # task: collect all the contiguous subsequences in the time series
-            # + use time t to loop through the series
-            # + start with subhead = t
-            # + use flag = 1 to indicate that an subtail is expected
-            # + condition branched on whether chlor_a at time t is nan    
-            print("head is", head)
-            t = head
-            print("t is", t)
-            flag = 1     # subtail is expected
-            subhead = t  # start with a good value
-            count = 0    # counter for the subseries in the splitting
+        # task: collect all the contiguous subsequences in the time series
+        # + use time t to loop through the series
+        # + start with subhead = t
+        # + use flag = 1 to indicate that an subtail is expected
+        # + condition branched on whether chlor_a at time t is nan    
+        print("head is", head)
+        t = head
+        print("t is", t)
+        flag = 1     # subtail is expected
+        subhead = t  # start with a good value
+        count = 0    # counter for the subseries in the splitting
 
-            while (t <= tail ):
-                bool_array = floatsDF_i[floatsDF_i.time== t].chlor_a.isnull()
+        while (t <= tail ):
+            bool_array = floatsDF_i[floatsDF_i.time== t].chlor_a.isnull()
         
-                if len(bool_array)==0: # there are gaps in data!!!! supposed to be a length 1 array
-                    detect_nan = True # end of series reached, since there is a gap in data!!!!
-                else:
-                    detect_nan = bool_array.values[0]
+            if len(bool_array)==0: # there are gaps in data!!!! supposed to be a length 1 array
+                detect_nan = True # end of series reached, since there is a gap in data!!!!
+            else:
+                detect_nan = bool_array.values[0]
             
             
-                if (1 == flag) & (~detect_nan ):
-                    if (tail == t): # end of series reached
-                        count = count + 1
-                        flag = 10000
-                        subtail = t # end of series reached
-                        mask = (floatsDF_i.time >= subhead) & (floatsDF_i.time <= subtail) 
-                        tmp = floatsDF_i[mask]
-                        tmp.loc[:,'id'] = tmp.loc[:,'id'] + 0.03*(count) # hash the float id
-                        tmp.plot(x='time', y ='chlor_a', title=('subseries from id - %.2f' % tmp.id.values[0]))
-                        floatsDF_sub_list.append(tmp)
-                    else: 
-                        pass
-        
-                if (1 == flag) & (detect_nan ):
+            if (1 == flag) & (~detect_nan ):
+                if (tail == t): # end of series reached
                     count = count + 1
-                    flag = 0 
-                    subtail = t - timedelta(freq)
+                    flag = 10000
+                    subtail = t # end of series reached
                     mask = (floatsDF_i.time >= subhead) & (floatsDF_i.time <= subtail) 
                     tmp = floatsDF_i[mask]
                     tmp.loc[:,'id'] = tmp.loc[:,'id'] + 0.03*(count) # hash the float id
                     tmp.plot(x='time', y ='chlor_a', title=('subseries from id - %.2f' % tmp.id.values[0]))
                     floatsDF_sub_list.append(tmp)
-            
-                if (0 == flag) & (detect_nan ):
+                else: 
                     pass
         
-                if (0 == flag) & (~detect_nan):
-                    if (tail == t): # end of series reached
-                        count = count + 1
-                        flag = 10000
-                        subhead = t
-                        subtail = t
-                        mask = (floatsDF_i.time >= subhead) & (floatsDF_i.time <= subtail) 
-                        tmp = floatsDF_i[mask]
-                        tmp.loc[:,'id'] = tmp.loc[:,'id'] + 0.03*(count) # hash the float id
-                        tmp.plot(x='time', y ='chlor_a', title=('subseries from id - %.2f' % tmp.id.values[0]))
-                        floatsDF_sub_list.append(tmp)
-                    else:          # end of series not reached
-                        flag = 1
-                        subhead = t
+            if (1 == flag) & (detect_nan ):
+                count = count + 1
+                flag = 0 
+                subtail = t - timedelta(freq)
+                mask = (floatsDF_i.time >= subhead) & (floatsDF_i.time <= subtail) 
+                tmp = floatsDF_i[mask]
+                tmp.loc[:,'id'] = tmp.loc[:,'id'] + 0.03*(count) # hash the float id
+                tmp.plot(x='time', y ='chlor_a', title=('subseries from id - %.2f' % tmp.id.values[0]))
+                floatsDF_sub_list.append(tmp)
+            
+            if (0 == flag) & (detect_nan ):
+                pass
         
-                t = t + timedelta(freq) # increment on t
+            if (0 == flag) & (~detect_nan):
+                if (tail == t): # end of series reached
+                    count = count + 1
+                    flag = 10000
+                    subhead = t
+                    subtail = t
+                    mask = (floatsDF_i.time >= subhead) & (floatsDF_i.time <= subtail) 
+                    tmp = floatsDF_i[mask]
+                    tmp.loc[:,'id'] = tmp.loc[:,'id'] + 0.03*(count) # hash the float id
+                    tmp.plot(x='time', y ='chlor_a', title=('subseries from id - %.2f' % tmp.id.values[0]))
+                    floatsDF_sub_list.append(tmp)
+                else:          # end of series not reached
+                    flag = 1
+                    subhead = t
+        
+            t = t + timedelta(freq) # increment on t
     
             #print("now t is", t)
 
